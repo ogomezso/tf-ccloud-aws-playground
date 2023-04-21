@@ -27,6 +27,11 @@ resource "aws_kms_key" "main" {
   description = "ogomez novo sandbox byok-key"
 }
 
+resource "aws_kms_alias" "main" {
+  name          = "ogomez_novo_sandbox_byok"
+  target_key_id = aws_kms_key.main.key_id
+}
+
 resource "confluent_byok_key" "main" {
   aws {
     key_arn = aws_kms_key.main.arn
@@ -119,5 +124,8 @@ resource "confluent_kafka_cluster" "dedicated" {
   }
   network {
     id = confluent_network.transit-gateway.id
+  }
+    byok_key {
+    id = confluent_byok_key.main.id
   }
 }
