@@ -18,9 +18,37 @@ resource "confluent_schema_registry_cluster" "advanced" {
   }
 
   region {
-    # See https://docs.confluent.io/cloud/current/stream-governance/packages.html#stream-governance-regions
     id = data.confluent_schema_registry_region.advanced.id
   }
+}
+
+resource "confluent_network" "transit-gateway" {
+  display_name     = "Transit Gateway Network"
+  cloud            = "AWS"
+  region           = "eu-west-1"
+  cidr             = "192.168.0.0/16"
+  connection_types = ["TRANSITGATEWAY"]
+  environment {
+    id = confluent_environment.main.id
+  }
+}
+
+resource "confluent_transit_gateway_attachment" "aws" {
+  display_name = "AWS Transit Gateway Attachment"
+  aws {
+    ram_resource_share_arn = "arn:aws:ram:eu-west-1:492737776546:resource-share/f193007a-e47c-4e5a-b3e1-2af956c1f252"
+    transit_gateway_id     = "tgw-0bc2d610a10487f00"
+    routes                 = ["10.0.0.0/16"]
+  }
+  environment {
+    id = confluent_environment.main.id
+  }
+  network {
+    id = confluent_network.transit-gateway.id
+  }
+  depends_on = [
+    confluent_network.transit-gateway
+  ]
 }
 
 resource "aws_kms_key" "main" {
@@ -28,16 +56,22 @@ resource "aws_kms_key" "main" {
 }
 
 resource "aws_kms_alias" "main" {
-  name          = "ogomez_novo_sandbox_byok"
+  name          = "alias/ogomez_novo_sandbox_byok"
   target_key_id = aws_kms_key.main.key_id
+  depends_on = [
+    aws_kms_alias.main
+  ]
 }
 
 resource "confluent_byok_key" "main" {
   aws {
     key_arn = aws_kms_key.main.arn
   }
+  depends_on = [
+    aws_kms_alias.main,
+    confluent_transit_gateway_attachment.aws
+  ]
 }
-
 data "aws_iam_policy_document" "main" {
   statement {
     sid    = "Allow KMS Use"
@@ -85,31 +119,6 @@ resource "aws_kms_key_policy" "main" {
   key_id = aws_kms_key.main.id
   policy = data.aws_iam_policy_document.main.json
 }
-resource "confluent_network" "transit-gateway" {
-  display_name     = "Transit Gateway Network"
-  cloud            = "AWS"
-  region           = "eu-west-1"
-  cidr             = "192.168.0.0/16"
-  connection_types = ["TRANSITGATEWAY"]
-  environment {
-    id = confluent_environment.main.id
-  }
-}
-
-resource "confluent_transit_gateway_attachment" "aws" {
-  display_name = "AWS Transit Gateway Attachment"
-  aws {
-    ram_resource_share_arn = "arn:aws:ram:eu-west-1:492737776546:resource-share/f193007a-e47c-4e5a-b3e1-2af956c1f252"
-    transit_gateway_id     = "tgw-0bc2d610a10487f00"
-    routes                 = ["10.0.0.0/16"]
-  }
-  environment {
-    id = confluent_environment.main.id
-  }
-  network {
-    id = confluent_network.transit-gateway.id
-  }
-}
 
 resource "confluent_kafka_cluster" "dedicated" {
   display_name = "inventory"
@@ -128,4 +137,8 @@ resource "confluent_kafka_cluster" "dedicated" {
     byok_key {
     id = confluent_byok_key.main.id
   }
+  depends_on = [
+    confluent_transit_gateway_attachment.aws,
+    aws_kms_key_policy.main
+  ]
 }
