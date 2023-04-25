@@ -17,6 +17,6 @@ provider "aws" {
 }
 
 provider "confluent" {
-  cloud_api_key    = "VGOXTPCSF3X7C6OI"
-  cloud_api_secret = "sVrZ2E62wxE43XxvxqtNIgwc/qj13Z3Kt7KIRZLEh+WlUngq2RqHJQa390+4pbkN"
+  cloud_api_key    = var.confluent_cloud_api_key
+  cloud_api_secret = var.confluent_cloud_api_secret
 }

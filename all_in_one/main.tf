@@ -58,9 +58,6 @@ resource "aws_kms_key" "main" {
 resource "aws_kms_alias" "main" {
   name          = "alias/ogomez_novo_sandbox_byok"
   target_key_id = aws_kms_key.main.key_id
-  depends_on = [
-    aws_kms_alias.main
-  ]
 }
 
 resource "confluent_byok_key" "main" {
