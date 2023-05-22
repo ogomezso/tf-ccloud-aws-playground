@@ -68,6 +68,9 @@ resource "confluent_byok_key" "main" {
     aws_kms_alias.main,
     confluent_transit_gateway_attachment.aws
   ]
+  lifecycle {
+   prevent_destroy = true
+ }
 }
 data "aws_iam_policy_document" "main" {
   statement {
@@ -118,7 +121,7 @@ resource "aws_kms_key_policy" "main" {
 }
 
 resource "confluent_kafka_cluster" "dedicated" {
-  display_name = "inventory"
+  display_name = "tgw-byok-cluster"
   availability = "SINGLE_ZONE"
   cloud        = confluent_network.transit-gateway.cloud
   region       = confluent_network.transit-gateway.region
@@ -138,4 +141,57 @@ resource "confluent_kafka_cluster" "dedicated" {
     confluent_transit_gateway_attachment.aws,
     aws_kms_key_policy.main
   ]
+}
+
+// ksqlDB service account
+resource "confluent_service_account" "ksql-admin" {
+  display_name = "ogomez-novo-ksql-admin-sa"
+  description  = "Service account for ksqlDB cluster"
+}
+resource "confluent_role_binding" "ksql-admin" {
+  principal   = "User:${confluent_service_account.ksql-admin.id}"
+  role_name   = "KsqlAdmin"
+  crn_pattern = confluent_ksql_cluster.ksql.resource_name
+}
+
+resource "confluent_role_binding" "ksql-schema-registry-resource-owner" {
+  principal   = "User:${confluent_service_account.ksql-admin.id}"
+  role_name   = "ResourceOwner"
+  crn_pattern = format("%s/%s", confluent_schema_registry_cluster.advanced.resource_name, "subject=*")
+}
+
+resource "confluent_ksql_cluster" "ksql" {
+  display_name = "tf-ksql"
+  csu = 1
+  kafka_cluster {
+    id = confluent_kafka_cluster.dedicated.id
+  }
+  credential_identity {
+    id = confluent_service_account.ksql-admin.id
+  }
+  environment {
+    id = confluent_environment.main.id
+  }
+  depends_on = [
+    confluent_role_binding.ksql-schema-registry-resource-owner,
+    confluent_schema_registry_cluster.advanced
+  ]
+}
+
+resource "confluent_role_binding" "app-ksql-all-topic" {
+  principal   = "User:pool-4a14"
+  role_name   = "ResourceOwner"
+  crn_pattern = "${confluent_kafka_cluster.dedicated.rbac_crn}/kafka=${confluent_kafka_cluster.dedicated.id}/topic=*"
+}
+
+resource "confluent_role_binding" "app-ksql-all-group" {
+  principal   = "User:pool-4a14"
+  role_name   = "ResourceOwner"
+  crn_pattern = "${confluent_kafka_cluster.dedicated.rbac_crn}/kafka=${confluent_kafka_cluster.dedicated.id}/group=*"
+}
+
+resource "confluent_role_binding" "app-ksql-all-transactions" {
+  principal   = "User:pool-4a14"
+  role_name   = "ResourceOwner"
+  crn_pattern = "${confluent_kafka_cluster.dedicated.rbac_crn}/kafka=${confluent_kafka_cluster.dedicated.id}/transactional-id=*"
 }
