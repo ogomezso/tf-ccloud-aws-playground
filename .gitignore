@@ -34,3 +34,8 @@ tf.plan
 /confluent
 /modules
 /all_in_one/terraform.tfvars
+
+*.pem
+/.vscode
+Azureid.sh
+oauth-config.properties

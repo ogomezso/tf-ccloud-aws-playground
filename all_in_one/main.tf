@@ -134,7 +134,7 @@ resource "confluent_kafka_cluster" "dedicated" {
   network {
     id = confluent_network.transit-gateway.id
   }
-    byok_key {
+  byok_key {
     id = confluent_byok_key.main.id
   }
   depends_on = [
@@ -195,3 +195,6 @@ resource "confluent_role_binding" "app-ksql-all-transactions" {
   role_name   = "ResourceOwner"
   crn_pattern = "${confluent_kafka_cluster.dedicated.rbac_crn}/kafka=${confluent_kafka_cluster.dedicated.id}/transactional-id=*"
 }
+
+
+
