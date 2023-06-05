@@ -1,5 +1,5 @@
 module "novo_dedicate_tgw_byok" {
-  source                            = "../../terraform-confluent-aws"
+  source                            = "github.com/ogomezso/terraform-confluent-aws"
   region                            = "eu-west-1"
   aws_kms_key_alias                 = "ogomez_novo_byok"
   aws_prefix                        = "ogomez_novo_sandbox"
