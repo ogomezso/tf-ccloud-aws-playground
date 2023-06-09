@@ -16,6 +16,13 @@ This scenario deploys all the resources needed -including Confluent Environment 
 
 [Example's Documentation](./tgw-byok-dedicated/README.md)
 
+# Topic Management
+
+This scenario show the way we can manage the creation of topics on CCloud cluster.
+
+## Identity Pool based IAM management Scenario
+
+This scenario show how to manage role binding creation on Confluent Cloud and identity pools
 
 > NOTE: All the modules describe here has to be taken a example on the how to, there are not maintained or supported.
 > Feel free to fork it and modify as you need
